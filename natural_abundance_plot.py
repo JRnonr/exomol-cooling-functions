@@ -31,7 +31,7 @@ def weighted_cooling_function(cf_dir, abundance_json, output_path="natural_abund
                 cf_files.append(os.path.join(root, file))
 
     if not cf_files:
-        print("[❌] No valid .cf files found.")
+        print("No valid .cf files found.")
         return None, []
 
     cooling_data = []
