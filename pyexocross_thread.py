@@ -1,3 +1,4 @@
+## Optimize the original version of Jingxin’s code
 ## Import all what we need.
 # encoding: utf-8
 import os
