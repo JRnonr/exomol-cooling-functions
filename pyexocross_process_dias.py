@@ -520,8 +520,6 @@ def read_exomol_pf(read_path, T):
 
     return(Q)
 
-
-
 def convert_np(obj):
     if isinstance(obj, np.ndarray):
         return obj.tolist()
@@ -531,92 +529,67 @@ def convert_np(obj):
         return int(obj)
     return obj
 
-
-
-def ProcessCoolingFunction(states_df, Ts, trans_df, Q_dict):
-    pid = os.getpid()
-    start_time = time.time()
-    
+def ProcessCoolingFunction(states_df, Ts, trans_df, Q_dict, temp_block=None):
     if trans_df.empty:
         return np.zeros(len(Ts))
 
+    if states_df.index.has_duplicates:
+        states_df = states_df[~states_df.index.duplicated(keep='first')]
+
     try:
-        merge_start = time.time()
-        
-        # use a more efficient merge strategy: merge upper states first, then lower states
-        # this avoids creating huge intermediate DataFrames
-        merged_upper = trans_df.merge(states_df, left_on='u', right_index=True, how='inner')
-        
-        # extract upper-state arrays immediately
-        A = np.asarray(merged_upper['A'])
-        Ep = np.asarray(merged_upper['E'])
-        gp = np.asarray(merged_upper['g'])
-        
-        # release merged_upper
-        del merged_upper
+        idx = states_df.index
+        td = trans_df.loc[trans_df['u'].isin(idx) & trans_df['l'].isin(idx)]
+        if td.empty:
+            return np.zeros(len(Ts))
+
+        u = td['u'].to_numpy()
+        l = td['l'].to_numpy()
+
+        A  = td['A'].to_numpy()
+        Eu = states_df.loc[u, 'E'].to_numpy()
+        gu = states_df.loc[u, 'g'].to_numpy()
+        El = states_df.loc[l, 'E'].to_numpy()
+        gl = states_df.loc[l, 'g'].to_numpy()
+
+        swap = El > Eu
+        Ep = np.where(swap, El, Eu)
+        gp = np.where(swap, gl, gu)
+        v  = np.abs(cal_v(Eu, El))
+
+        del td, u, l, Eu, El, gu, gl
         gc.collect()
-        
-        # merge lower states now
-        merged_lower = trans_df.merge(states_df, left_on='l', right_index=True, how='inner')
-        
-        # extract lower-state arrays
-        El = np.asarray(merged_lower['E'])
-        
-        # release merged_lower and trans_df
-        del merged_lower, trans_df
-        gc.collect()
-        
-        merge_time = time.time() - merge_start
-        
-    except Exception as e:
+
+    except Exception:
         return np.zeros(len(Ts))
 
     try:
-        v = cal_v(Ep, El)
-        del El  # release arrays that are no longer needed
-        gc.collect()
-        
         Ts_arr = np.asarray(Ts)
-        Q_arr = np.array([Q_dict[T] for T in Ts_arr])
-        
-        # use a more memory-efficient compute strategy
-        exp_start = time.time()
-        exp_arg = -c2 * Ep[:, None] / Ts_arr[None, :]
-        exp_factor = np.exp(exp_arg)
-        
-        # compute step by step to reduce memory peaks
-        step_start = time.time()
-        
-        temp1 = A[:, None] * hc
-        del A
-        gc.collect()
-        
-        temp2 = temp1 * v[:, None]
-        del temp1, v
-        gc.collect()
-        
-        temp3 = temp2 * gp[:, None]
-        del temp2, gp
-        gc.collect()
-        
-        numerator = temp3 * exp_factor
-        del temp3, exp_factor, exp_arg
-        gc.collect()
-        
-        summed = np.sum(numerator, axis=0)
-        del numerator
-        gc.collect()
-        
-        cooling_func = summed / (4 * np.pi * Q_arr)
-        del summed, Q_arr, Ts_arr, Ep
-        gc.collect()
-        
-        
-    except Exception as e:
+        Q_arr  = np.array([Q_dict[T] for T in Ts_arr])
+
+        const = (A * hc) * v * gp
+        del A, v, gp
+
+        if temp_block is None:
+            exp_factor = np.exp(-c2 * Ep[:, None] / Ts_arr[None, :])   # (N_lines × N_T)
+            summed = const @ exp_factor                                 # (N_T,)
+            cooling = summed / (4 * np.pi * Q_arr)
+            return cooling
+        else:
+            nT = Ts_arr.size
+            out = np.empty(nT)
+            for s in range(0, nT, temp_block):
+                e = min(s + temp_block, nT)
+                exp_blk = np.exp(-c2 * Ep[:, None] / Ts_arr[None, s:e])
+                out[s:e] = const @ exp_blk
+                del exp_blk
+            cooling_func = out / (4 * np.pi * Q_arr)
+            del out, const, Q_arr, Ts_arr, Ep
+            gc.collect()
+
+    except Exception:
         return np.zeros(len(Ts))
 
     return cooling_func
-
 
 def get_partial_path(trans_filepath):
     trans_filename = os.path.basename(trans_filepath).replace(".bz2", "")
@@ -624,8 +597,6 @@ def get_partial_path(trans_filepath):
     partial_folder = os.path.join(cf_folder, f"{isotopologue}__{dataset}__partials")
     os.makedirs(partial_folder, exist_ok=True)
     return os.path.join(partial_folder, trans_filename + ".cf.partial")
-
-
 
 def save_partial_result(partial_path, Ts, cooling_func):
     np.savetxt(partial_path, np.column_stack((Ts, cooling_func)), fmt="%8.1f %20.8E")
