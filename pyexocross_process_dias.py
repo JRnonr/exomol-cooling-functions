@@ -150,11 +150,12 @@ def start_main_cpu_sampling(interval=2):
     def loop():
         while not stop_event.is_set():
             try:
-                usage = subprocess.check_output(
-                    "ps -u $USER -o pcpu= | paste -sd+ - | bc",
-                    shell=True, executable='/bin/bash'
-                ).decode().strip()
-                global_cpu_samples.append(float(usage))  # English comment
+                usage = psutil.cpu_percent(interval=None)
+                # usage = subprocess.check_output(
+                #     "ps -u $USER -o pcpu= | paste -sd+ - | bc",
+                #     shell=True, executable='/bin/bash'
+                # ).decode().strip()
+                global_cpu_samples.append(float(usage))  # 每次记录一次
             except Exception:
                 pass
             time.sleep(interval)
@@ -184,13 +185,16 @@ def start_main_memory_sampling(interval=2):
     def loop():
         while not stop_event.is_set():
             try:
-                cmd = f"ps -u {user} -o rss= | awk '{{sum+=$1}} END {{print sum/1024}}'"
-                mem = subprocess.check_output(
-                    cmd,
-                    shell=True, executable='/bin/bash'
-                ).decode().strip()
+                # cmd = f"ps -u {user} -o rss= | awk '{{sum+=$1}} END {{print sum/1024}}'"
+                # mem = subprocess.check_output(
+                #     cmd,
+                #     shell=True, executable='/bin/bash'
+                # ).decode().strip()
+                total_rss_mb = sum(
+                    p.memory_info().rss for p in psutil.process_iter(['memory_info'])
+                ) / 1024 / 1024
                 timestamp = time.time() - global_start_time
-                global_memory_samples.append((timestamp, float(mem)))
+                global_memory_samples.append((timestamp, total_rss_mb))
             except Exception:
                 pass
             time.sleep(interval)
@@ -311,7 +315,7 @@ c2 = h * c / kB                     # Second radiation constant (cm K)
  check_uncertainty) = inp_para(inp_filepath)
 # pandarallel.initialize(nb_workers=ncputrans,progress_bar=False) # Initialize.
 
-cooling_output_root = "/mnt/data/shuchen/cooling"
+cooling_output_root = "/share/data1/xucapjix/shuchen/cooling"
 
 runtime_record = {
     "start_time": time.time(),
@@ -417,7 +421,7 @@ def read_all_states(read_path):
 def command_decompress(trans_filename):
     # Directory where the decompressed .trans files will be saved
     # trans_dir = read_path+molecule+'/'+isotopologue+'/'+dataset+'/decompressed/'
-    trans_dir = f"/mnt/data/shuchen/tmp_decompressed/{molecule}/{isotopologue}/{dataset}/"
+    trans_dir = f"/share/data1/xucapjix/shuchen/tmp_decompressed/{molecule}/{isotopologue}/{dataset}/"
     if os.path.exists(trans_dir):
         pass
     else:

@@ -19,7 +19,7 @@ C2H2,12C2-1H2,aCeTY,✅ Done
 C2H4,12C2-1H4,MaYTY,❌ Not Done
 C3,12C-12C-13C,AtLast,✅ Done
 C3,12C-13C-12C,AtLast,✅ Done
-C3,12C3,AtLast,❌ Not Done
+C3,12C3,AtLast,✅ Done
 CH,12C-1H,MoLLIST,✅ Done
 CH,13C-1H,MoLLIST,✅ Done
 CH3,12C-1H3,AYYJ,❌ Not Done
