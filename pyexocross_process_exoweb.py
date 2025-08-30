@@ -403,6 +403,16 @@ def read_all_states(read_path):
     else:
         raise ImportError("No such states file, please check the read path and states filename format!")
 
+    before = len(states_df)
+    for col in ['E', 'g', 'J']:
+        if col in states_df.columns:
+            states_df[col] = pd.to_numeric(states_df[col], errors='coerce')
+
+    states_df = states_df.dropna(subset=[c for c in ['E','g','J'] if c in states_df.columns])
+    dropped = before - len(states_df)
+    if dropped > 0:
+        print(f"Cleaned states: dropped {dropped} row(s) with invalid E/g/J")
+
     # set index to improve merge efficiency
     states_df.set_index('id', inplace=True)
     
