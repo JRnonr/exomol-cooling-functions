@@ -792,7 +792,7 @@ class ChunkGenerator:
                 chunk["u"] = pd.to_numeric(chunk["u"], errors="coerce")
                 chunk["l"] = pd.to_numeric(chunk["l"], errors="coerce")
                 chunk["A"] = pd.to_numeric(chunk["A"], errors="coerce")
-
+                
                 valid_mask = chunk["A"].notna() & (chunk["A"] >= 0)
                 chunk = chunk[valid_mask]
                 chunk = chunk.dropna(subset=["u", "l"])
@@ -871,6 +871,10 @@ def calculate_cooling_func(states_df, Ts, trans_filepath, ncpufiles, ncputrans, 
     # use the provided parameters; no inner adjustments
     safe_workers = ncputrans
     safe_chunk_size = chunk_size
+    
+    # update result with actual parameters used
+    result["ncputrans_used"] = safe_workers
+    result["chunksize_used"] = safe_chunk_size
     
     # initialize progress bar
     proc_pbar = tqdm(total=num_chunks, desc="Processing chunks")
@@ -1011,6 +1015,83 @@ def classify_files_by_size(trans_filepaths):
     
     return small_files, medium_files, large_files, huge_files
 
+# Adaptive parameter selection function
+def get_adaptive_parameters_by_file_size(file_size_gb, base_ncputrans, base_ncpufiles, base_chunk_size, total_files=None):
+    """
+    Adapt parameters based on file size and number of files
+    """
+    
+    # use default strategy if total_files is not provided
+    if total_files is None:
+        total_files = 50  # moderate number of files
+    
+    # adjust based on file count and size
+    if total_files < 50:  # few files
+        if file_size_gb < 2:  # small files
+            adaptive_ncputrans = min(base_ncputrans, 24)
+            adaptive_ncpufiles = min(base_ncpufiles, 4)
+            adaptive_chunk_size = max(base_chunk_size, 100000)
+            strategy = "small_file_balanced"
+            print(f" Small file strategy (few files): Workers={adaptive_ncputrans}, Files={adaptive_ncpufiles}, Chunk={adaptive_chunk_size}")
+            
+        elif file_size_gb < 10:  # medium files
+            adaptive_ncputrans = min(base_ncputrans, 32)
+            adaptive_ncpufiles = min(base_ncpufiles, 3)
+            adaptive_chunk_size = max(base_chunk_size, 50000)
+            strategy = "medium_file_balanced"
+            print(f" Medium file strategy (few files): Workers={adaptive_ncputrans}, Files={adaptive_ncpufiles}, Chunk={adaptive_chunk_size}")
+            
+        elif file_size_gb < 30:  # large files
+            adaptive_ncputrans = min(base_ncputrans, 32)
+            adaptive_ncpufiles = min(base_ncpufiles, 2)
+            adaptive_chunk_size = max(base_chunk_size, 20000)
+            strategy = "large_file_conservative"
+            print(f" Large file strategy (few files): Workers={adaptive_ncputrans}, Files={adaptive_ncpufiles}, Chunk={adaptive_chunk_size}")
+            
+        else:  # large files
+            adaptive_ncputrans = min(base_ncputrans, 48)
+            adaptive_ncpufiles = min(base_ncpufiles, 1)
+            adaptive_chunk_size = max(base_chunk_size, 10000)
+            strategy = "huge_file_minimal"
+            print(f" Huge file strategy (few files): Workers={adaptive_ncputrans}, Files={adaptive_ncpufiles}, Chunk={adaptive_chunk_size}")
+            
+    else:  # English comment
+        if file_size_gb < 2:  # small files
+            # small filesH2O
+            adaptive_ncputrans = min(base_ncputrans, 4)
+            adaptive_ncpufiles = min(base_ncpufiles, 16)
+            adaptive_chunk_size = max(base_chunk_size, 50000)
+            strategy = "small_file_many_files"
+            print(f" Small file strategy (many files): Workers={adaptive_ncputrans}, Files={adaptive_ncpufiles}, Chunk={adaptive_chunk_size}")
+            
+        elif file_size_gb < 10:  # medium files
+            adaptive_ncputrans = min(base_ncputrans, 6)
+            adaptive_ncpufiles = min(base_ncpufiles, 12)
+            adaptive_chunk_size = max(base_chunk_size, 30000)
+            strategy = "medium_file_many_files"
+            print(f" Medium file strategy (many files): Workers={adaptive_ncputrans}, Files={adaptive_ncpufiles}, Chunk={adaptive_chunk_size}")
+            
+        elif file_size_gb < 30:  # large files
+            adaptive_ncputrans = min(base_ncputrans, 8)
+            adaptive_ncpufiles = min(base_ncpufiles, 6)
+            adaptive_chunk_size = max(base_chunk_size, 10000)
+            strategy = "large_file_many_files"
+            print(f" Large file strategy (many files): Workers={adaptive_ncputrans}, Files={adaptive_ncpufiles}, Chunk={adaptive_chunk_size}")
+            
+        else:  # large files
+            adaptive_ncputrans = min(base_ncputrans, 12)
+            adaptive_ncpufiles = min(base_ncpufiles, 2)
+            adaptive_chunk_size = max(base_chunk_size, 100000)
+            strategy = "huge_file_many_files"
+            print(f" Huge file strategy (many files): Workers={adaptive_ncputrans}, Files={adaptive_ncpufiles}, Chunk={adaptive_chunk_size}")
+    
+    return {
+        'ncputrans': adaptive_ncputrans,
+        'ncpufiles': adaptive_ncpufiles,
+        'chunk_size': adaptive_chunk_size,
+        'strategy': strategy
+    }
+
 def get_priority_processing_order(trans_filepaths):
     """
     Get prioritized processing order: small files first
@@ -1093,7 +1174,7 @@ def exomol_cooling(states_df, Ntemp, Tmax):
     trans_filepaths = get_transfiles(read_path)
     
     # new: intelligent file classification and prioritized processing
-    print(" Processing files...")
+    print(" Analyzing file sizes and setting adaptive parameters...")
     priority_order = get_priority_processing_order(trans_filepaths)
     
     # English comment
@@ -1101,8 +1182,8 @@ def exomol_cooling(states_df, Ntemp, Tmax):
     total_size_gb = sum(os.path.getsize(fp) / 1024**3 for fp in trans_filepaths)
     print(f" Total: {total_files} files, {total_size_gb:.1f}GB")
     
-    def process_file(trans_filepath, base_ncputrans, base_ncpufiles, base_chunk_size, total_files):
-        """Process a single file"""
+    def process_file_with_adaptive_parameters(trans_filepath, base_ncputrans, base_ncpufiles, base_chunk_size, total_files):
+        """Process a single file using adaptive parameters"""
         trans_filename = os.path.basename(trans_filepath).replace(".bz2", "")
         partial_path = get_partial_path(trans_filepath)
         
@@ -1112,14 +1193,18 @@ def exomol_cooling(states_df, Ntemp, Tmax):
                 runtime_record["trans_times"][trans_filename] = old_trans_times[trans_filename]
             return None
         
-        # Use the provided parameters directly
-        safe_workers = ncputrans
-        safe_chunk_size = chunk_size
+        # English comment
+        file_size_gb = os.path.getsize(trans_filepath) / 1024**3
+        adaptive_params = get_adaptive_parameters_by_file_size(file_size_gb, base_ncputrans, base_ncpufiles, base_chunk_size, total_files)
         
-        print(f" {trans_filename}: Using default parameters")
+        # English comment
+        safe_workers = adaptive_params['ncputrans']
+        safe_chunk_size = adaptive_params['chunk_size']
+        
+        print(f" {trans_filename}: Adaptive strategy={adaptive_params['strategy']}")
         print(f" {trans_filename}: Workers={safe_workers}, ChunkSize={safe_chunk_size}")
         
-        return (trans_filepath, safe_workers, safe_chunk_size, "default")
+        return (trans_filepath, safe_workers, safe_chunk_size, adaptive_params['strategy'])
 
     # ProcessPoolExecutor
     print(f" Creating single ProcessPoolExecutor with {ncpufiles} workers...")
@@ -1129,7 +1214,16 @@ def exomol_cooling(states_df, Ntemp, Tmax):
     # dynamically choose file-level parallelism by file type
     def get_file_level_parallelism(file_type, file_list, total_files):
         """Get suitable file-level parallelism by file type"""
-        return ncpufiles
+        if not file_list:
+            return ncpufiles
+        
+        # English comment
+        sample_file_size = file_list[0][1]
+        adaptive_params = get_adaptive_parameters_by_file_size(sample_file_size, ncputrans, ncpufiles, chunk_size, total_files)
+        strategy_ncpufiles = adaptive_params['ncpufiles']
+        
+        print(f" {file_type.upper()} files: Using {strategy_ncpufiles} file-level workers (strategy: {adaptive_params['strategy']})")
+        return strategy_ncpufiles
     
     # use ncpufiles as file-level parallelism
     print(f" Using {ncpufiles} workers for file-level parallelism")
@@ -1154,7 +1248,7 @@ def exomol_cooling(states_df, Ntemp, Tmax):
             
             for trans_filepath, file_size_gb in file_list:
                 # English comment
-                file_params = process_file(trans_filepath, ncputrans, ncpufiles, chunk_size, total_files)
+                file_params = process_file_with_adaptive_parameters(trans_filepath, ncputrans, ncpufiles, chunk_size, total_files)
                 
                 if file_params is None:  # English comment
                     continue
