@@ -25,7 +25,7 @@ CH,13C-1H,MoLLIST,✅ Done
 CH3,12C-1H3,AYYJ,❌ Not Done
 CH3Cl,12C-1H3-35Cl,OYT,❌ Not Done
 CH3Cl,12C-1H3-37Cl,OYT,❌ Not Done
-CH3F,12C-1H3-19F,OYKYT,❌ Not Done
+CH3F,12C-1H3-19F,OYKYT,✅ Done
 CH4,12C-1H4,MM,✅ Done
 CH_p,12C-1H_p,PYT,✅ Done
 CH_p,13C-1H_p,PYT,✅ Done
@@ -60,7 +60,7 @@ CaF,46Ca-19F,MoLLIST,✅ Done
 CaF,48Ca-19F,MoLLIST,✅ Done
 CaH,40Ca-1H,XAB,✅ Done
 CaO,40Ca-16O,VBATHY,✅ Done
-CaOH,40Ca-16O-1H,OYT6,✅ Done
+CaOH,40Ca-16O-1H,OYT6,❌ Not Done
 CrH,52Cr-1H,MoLLIST,✅ Done
 FeH,56Fe-1H,MoLLIST,✅ Done
 H2,1H-2H,ADJSAAM,✅ Done
@@ -68,7 +68,7 @@ H2,1H2,ARLR,✅ Done
 H2,1H2,RACPPK,✅ Done
 H2CO,1H2-12C-16O,AYTY,❌ Not Done
 H2CS,1H2-12C-32S,MOTY,❌ Not Done
-H2O,1H-2H-16O,VTT,❌ Not Done
+H2O,1H-2H-16O,VTT,✅ Done
 H2O,1H2-16O,POKAZATEL,✅ Done
 H2O,1H2-17O,HotWat78,✅ Done
 H2O,1H2-18O,HotWat78,✅ Done
@@ -89,7 +89,7 @@ HCl,1H-37Cl,HITRAN-HCl,✅ Done
 HCl,2H-35Cl,HITRAN-HCl,✅ Done
 HCl,2H-37Cl,HITRAN-HCl,✅ Done
 HF,1H-19F,Coxon-Hajig,✅ Done
-HNO3,1H-14N-16O3,AIJS,❌ Not Done
+HNO3,1H-14N-16O3,AIJS,✅ Done
 HeH_p,3He-1H_p,ADJSAAM,✅ Done
 HeH_p,3He-2H_p,ADJSAAM,✅ Done
 HeH_p,4He-1H_p,ADJSAAM,✅ Done
@@ -133,7 +133,7 @@ NH,14N-2H,kNigHt,✅ Done
 NH,15N-1H,kNigHt,✅ Done
 NH,15N-2H,kNigHt,✅ Done
 NH3,14N-1H3,CoYuTe,❌ Not Done
-NH3,15N-1H3,CoYuTe-15,❌ Not Done
+NH3,15N-1H3,CoYuTe-15,✅ Done
 NO,14N-16O,XABC,✅ Done
 NS,14N-32S,SNaSH,✅ Done
 NS,14N-33S,SNaSH,✅ Done
@@ -163,7 +163,7 @@ SH,33S-1H,GYT,✅ Done
 SH,34S-1H,GYT,✅ Done
 SH,36S-1H,GYT,✅ Done
 SO,32S-16O,SOLIS,✅ Done
-SO2,32S-16O2,ExoAmes,❌ Not Done
+SO2,32S-16O2,ExoAmes,✅ Done
 SO3,32S-16O3,UYT2,❌ Not Done
 ScH,45Sc-1H,LYT,✅ Done
 ScO,45Sc-16O,LPB,✅ Done
@@ -171,7 +171,7 @@ SiH,28Si-1H,SiGHTLY,✅ Done
 SiH,28Si-2H,SiGHTLY,✅ Done
 SiH,29Si-1H,SiGHTLY,✅ Done
 SiH,30Si-1H,SiGHTLY,✅ Done
-SiH2,28Si-1H2,CATS,❌ Not Done
+SiH2,28Si-1H2,CATS,✅ Done
 SiH4,28Si-1H4,OY2T,❌ Not Done
 SiN,28Si-14N,SiNfull,✅ Done
 SiN,28Si-15N,SiNfull,✅ Done
@@ -207,6 +207,6 @@ ZrO,92Zr-16O,ZorrO,✅ Done
 ZrO,93Zr-16O,ZorrO,✅ Done
 ZrO,94Zr-16O,ZorrO,✅ Done
 ZrO,96Zr-16O,ZorrO,✅ Done
-cis-P2H2,cis-31P2-1H2,OY-Cis,❌ Not Done
+cis-P2H2,cis-31P2-1H2,OY-Cis,✅ Done
 trans-P2H2,trans-31P2-1H-2H,OY-Trans,❌ Not Done
 trans-P2H2,trans-31P2-1H2,OY-Trans,❌ Not Done
