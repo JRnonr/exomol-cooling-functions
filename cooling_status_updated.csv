@@ -16,7 +16,7 @@ C2,12C-13C,8states,✅ Done
 C2,12C2,8states,✅ Done
 C2,13C2,8states,✅ Done
 C2H2,12C2-1H2,aCeTY,✅ Done
-C2H4,12C2-1H4,MaYTY,❌ Not Done
+C2H4,12C2-1H4,MaYTY,✅ Done
 C3,12C-12C-13C,AtLast,✅ Done
 C3,12C-13C-12C,AtLast,✅ Done
 C3,12C3,AtLast,✅ Done
@@ -146,7 +146,7 @@ NaF,23Na-19F,MoLLIST,✅ Done
 NaH,23Na-1H,Rivlin,✅ Done
 NaH,23Na-2H,Rivlin,✅ Done
 NaO,23Na-16O,NaOUCMe,✅ Done
-NaOH,23Na-16O-1H,OYT5,❌ Not Done
+NaOH,23Na-16O-1H,OYT5,✅ Done
 OCS,16O-12C-32S,OYT8,✅ Done
 OH,16O-1H,MYTHOS,✅ Done
 OH_p,16O-1H_p,MoLLIST,✅ Done
