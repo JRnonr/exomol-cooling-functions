@@ -24,7 +24,7 @@ CH,12C-1H,MoLLIST,✅ Done
 CH,13C-1H,MoLLIST,✅ Done
 CH3,12C-1H3,AYYJ,✅ Done
 CH3Cl,12C-1H3-35Cl,OYT,✅ Done
-CH3Cl,12C-1H3-37Cl,OYT,❌ Not Done
+CH3Cl,12C-1H3-37Cl,OYT,✅ Done
 CH3F,12C-1H3-19F,OYKYT,✅ Done
 CH4,12C-1H4,MM,✅ Done
 CH_p,12C-1H_p,PYT,✅ Done
@@ -164,7 +164,7 @@ SH,34S-1H,GYT,✅ Done
 SH,36S-1H,GYT,✅ Done
 SO,32S-16O,SOLIS,✅ Done
 SO2,32S-16O2,ExoAmes,✅ Done
-SO3,32S-16O3,UYT2,❌ Not Done
+SO3,32S-16O3,UYT2,✅ Done
 ScH,45Sc-1H,LYT,✅ Done
 ScO,45Sc-16O,LPB,✅ Done
 SiH,28Si-1H,SiGHTLY,✅ Done
@@ -197,7 +197,7 @@ TiO,47Ti-16O,Toto,✅ Done
 TiO,48Ti-16O,Toto,✅ Done
 TiO,49Ti-16O,Toto,✅ Done
 TiO,50Ti-16O,Toto,✅ Done
-VO,51V-16O,HyVO,❌ Not Done
+VO,51V-16O,HyVO,✅ Done
 YO,89Y-16O,BRYTS,✅ Done
 YO,89Y-17O,BRYTS,✅ Done
 YO,89Y-18O,BRYTS,✅ Done
