@@ -72,7 +72,7 @@ H2O,1H-2H-16O,VTT,✅ Done
 H2O,1H2-16O,POKAZATEL,✅ Done
 H2O,1H2-17O,HotWat78,✅ Done
 H2O,1H2-18O,HotWat78,✅ Done
-H2O2,1H2-16O2,APTY,❌ Not Done
+H2O2,1H2-16O2,APTY,✅ Done
 H2S,1H2-32S,AYT2,✅ Done
 H2_p,1H-2H_p,ADJSAAM,✅ Done
 H3O_p,1H3-16O_p,eXeL,❌ Not Done
@@ -82,7 +82,7 @@ H3_p,2H2-1H_p,MiZo,✅ Done
 H3_p,2H3_p,MiZo,✅ Done
 HBO,1H-10B-16O,LQL,✅ Done
 HBO,1H-11B-16O,LQL,✅ Done
-HBr,1H-79Br,HITRAN-HBr,❌ Not Done
+HBr,1H-79Br,HITRAN-HBr,✅ Done
 HCN,1H-12C-14N,Harris,✅ Done
 HCl,1H-35Cl,HITRAN-HCl,✅ Done
 HCl,1H-37Cl,HITRAN-HCl,✅ Done
