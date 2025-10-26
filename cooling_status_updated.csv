@@ -66,8 +66,8 @@ FeH,56Fe-1H,MoLLIST,✅ Done
 H2,1H-2H,ADJSAAM,✅ Done
 H2,1H2,ARLR,✅ Done
 H2,1H2,RACPPK,✅ Done
-H2CO,1H2-12C-16O,AYTY,❌ Not Done
-H2CS,1H2-12C-32S,MOTY,❌ Not Done
+H2CO,1H2-12C-16O,AYTY,✅ Done
+H2CS,1H2-12C-32S,MOTY,✅ Done
 H2O,1H-2H-16O,VTT,✅ Done
 H2O,1H2-16O,POKAZATEL,✅ Done
 H2O,1H2-17O,HotWat78,✅ Done
@@ -75,7 +75,7 @@ H2O,1H2-18O,HotWat78,✅ Done
 H2O2,1H2-16O2,APTY,✅ Done
 H2S,1H2-32S,AYT2,✅ Done
 H2_p,1H-2H_p,ADJSAAM,✅ Done
-H3O_p,1H3-16O_p,eXeL,❌ Not Done
+H3O_p,1H3-16O_p,eXeL,✅ Done
 H3_p,1H2-2H_p,ST,✅ Done
 H3_p,1H3_p,MiZATeP,✅ Done
 H3_p,2H2-1H_p,MiZo,✅ Done
@@ -172,7 +172,7 @@ SiH,28Si-2H,SiGHTLY,✅ Done
 SiH,29Si-1H,SiGHTLY,✅ Done
 SiH,30Si-1H,SiGHTLY,✅ Done
 SiH2,28Si-1H2,CATS,✅ Done
-SiH4,28Si-1H4,OY2T,❌ Not Done
+SiH4,28Si-1H4,OY2T,✅ Done
 SiN,28Si-14N,SiNfull,✅ Done
 SiN,28Si-15N,SiNfull,✅ Done
 SiN,29Si-14N,SiNfull,✅ Done
@@ -208,5 +208,5 @@ ZrO,93Zr-16O,ZorrO,✅ Done
 ZrO,94Zr-16O,ZorrO,✅ Done
 ZrO,96Zr-16O,ZorrO,✅ Done
 cis-P2H2,cis-31P2-1H2,OY-Cis,✅ Done
-trans-P2H2,trans-31P2-1H-2H,OY-Trans,❌ Not Done
-trans-P2H2,trans-31P2-1H2,OY-Trans,❌ Not Done
+trans-P2H2,trans-31P2-1H-2H,OY-Trans,✅ Done
+trans-P2H2,trans-31P2-1H2,OY-Trans,✅ Done
