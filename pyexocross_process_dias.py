@@ -912,7 +912,6 @@ def calculate_cooling_func(states_df, Ts, trans_filepath, ncpufiles, ncputrans, 
                     completed_chunks += 1
                     proc_pbar.update(1)
             
-            # submit new tasks
             while len(futures) < safe_workers and completed_chunks + len(futures) < num_chunks:
                 try:
                     chunk_data = next(chunk_iter)
@@ -1076,7 +1075,7 @@ def exomol_cooling(states_df, Ntemp, Tmax):
         mem_stop_event.set()
         mem_thread.join()
 
-        return runtime_record  # English comment
+        return runtime_record 
 
 
     # if runtime.json exists, load recorded times
@@ -1086,17 +1085,16 @@ def exomol_cooling(states_df, Ntemp, Tmax):
     else:
         existing_runtime = {}
     old_trans_times = OrderedDict(existing_runtime.get("trans_times", {}))
-    runtime_record["trans_times"] = OrderedDict({**old_trans_times})  # English comment
+    runtime_record["trans_times"] = OrderedDict({**old_trans_times}) 
 
     runtime_record["large_trans_files_ncpufiles_1"] = []
 
     trans_filepaths = get_transfiles(read_path)
     
-    # new: intelligent file classification and prioritized processing
+    # intelligent file classification and prioritized processing
     print(" Processing files...")
     priority_order = get_priority_processing_order(trans_filepaths)
     
-    # English comment
     total_files = len(trans_filepaths)
     total_size_gb = sum(os.path.getsize(fp) / 1024**3 for fp in trans_filepaths)
     print(f" Total: {total_files} files, {total_size_gb:.1f}GB")
@@ -1153,10 +1151,9 @@ def exomol_cooling(states_df, Ntemp, Tmax):
             file_futures = []
             
             for trans_filepath, file_size_gb in file_list:
-                # English comment
                 file_params = process_file(trans_filepath, ncputrans, ncpufiles, chunk_size, total_files)
                 
-                if file_params is None:  # English comment
+                if file_params is None:  
                     continue
                 
                 trans_filepath, safe_workers, safe_chunk_size, strategy = file_params
@@ -1225,19 +1222,14 @@ def exomol_cooling(states_df, Ntemp, Tmax):
                 except Exception as e:
                     print(f" Error in retry task: {e}")
 
-    # check again whether all partial files exist
+    # check again whether all partial files exist (require exact count match)
     partial_files = glob.glob(os.path.join(partial_folder, "*.cf.partial"))
-    existing_partials_after_retry = set(os.path.basename(pf).replace(".cf.partial", "") for pf in partial_files)
-    
-    if existing_partials_after_retry >= expected_partials:
+    if len(partial_files) == len(trans_filepaths):
         merge_all_partials(molecule, isotopologue, dataset, Ts, cf_path)
         print(' Used all .cf.partial files to create final cooling function.')
     else:
-        missing_after_retry = expected_partials - existing_partials_after_retry
-        print(f" Still incomplete after retry: {len(existing_partials_after_retry)} / {len(expected_partials)}")
-        print(f" Missing files: {missing_after_retry}")
-        # Continue execution even if incomplete, return current runtime_record
-        print(" Continuing with incomplete results...")
+        print(f" Still incomplete after retry: {len(partial_files)} / {len(trans_filepaths)}")
+        return
 
 
     ts.end()

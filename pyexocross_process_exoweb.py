@@ -41,73 +41,7 @@ pd.options.mode.chained_assignment = None
 freeze_support()
 num_cpus = mp.cpu_count()
 
-# Process pool manager based on memory budget
-class MemoryBudgetManager:
-    def __init__(self, total_memory_gb=60, safety_margin_gb=5):
-        self.total_memory_gb = total_memory_gb
-        self.safety_margin_gb = safety_margin_gb
-        self.available_memory_gb = total_memory_gb - safety_margin_gb
-        
-        # Memory allocation budget
-        self.states_memory_gb = 0.5  # states_dfshared memory
-        self.system_memory_gb = 2.0  # system overhead
-        self.worker_memory_gb = 1.5  # estimated memory per worker
-        
-        # compute max number of worker processes
-        self.max_workers = int((self.available_memory_gb - self.states_memory_gb - self.system_memory_gb) / self.worker_memory_gb)
-        
-        print(f" Memory Budget Manager:")
-        print(f"   - Total memory: {total_memory_gb}GB")
-        print(f"   - Available for workers: {self.available_memory_gb - self.states_memory_gb - self.system_memory_gb:.1f}GB")
-        print(f"   - Max workers: {self.max_workers}")
-        print(f"   - Memory per worker: {self.worker_memory_gb}GB")
-    
-    def get_safe_worker_count(self, requested_workers):
-        """Return a safe number of worker processes"""
-        return min(requested_workers, self.max_workers)
-    
-    def get_optimal_chunk_size(self, file_size_gb, requested_chunk_size):
-        """Optimize chunk size based on file size and memory budget"""
-        # get current available memory
-        available_memory_gb = psutil.virtual_memory().available / 1024**3
-        
-        # dynamic estimate: memory usage based on chunk_size
-        # about 16 bytes per row plus ~30x overhead (DataFrame + compute overhead)
-        bytes_per_row = 16  # u(4) + l(4) + A(8)
-        total_overhead = 30  # DataFrame +
-        
-        # estimate memory usage based on requested_chunk_size
-        estimated_memory_per_chunk_mb = (requested_chunk_size * bytes_per_row * total_overhead) / (1024 * 1024)
-        
-        # compute max number of chunks in memory based on available memory
-        max_chunks_in_memory = int(available_memory_gb * 1024 / estimated_memory_per_chunk_mb)
-        
-        # dynamically adjust chunk size by file size
-        if file_size_gb > 10:
-            # large files: use smaller chunks to avoid memory peaks
-            optimal_chunk_size = min(10000, requested_chunk_size)
-        elif file_size_gb > 5:
-            # medium files: balanced strategy
-            optimal_chunk_size = min(15000, requested_chunk_size)
-        else:
-            # small files: can use larger chunk size
-            optimal_chunk_size = min(20000, requested_chunk_size)
-        
-        # further limit based on available memory
-        if max_chunks_in_memory < 10:
-            # severe memory shortage: greatly reduce chunk size
-            optimal_chunk_size = min(5000, optimal_chunk_size)
-        elif max_chunks_in_memory < 50:
-            # low memory: moderately reduce chunk size
-            optimal_chunk_size = min(10000, optimal_chunk_size)
-        
-        print(f" Memory optimization: {available_memory_gb:.1f}GB available, {max_chunks_in_memory} max chunks")
-        print(f" Chunk size: {requested_chunk_size} -> {optimal_chunk_size}")
-        
-        return optimal_chunk_size
 
-# English comment
-memory_budget_manager = MemoryBudgetManager(total_memory_gb=60, safety_margin_gb=5)
 
 # The input file path
 def parse_args():
@@ -154,7 +88,7 @@ def start_main_cpu_sampling(interval=2):
                     "ps -u $USER -o pcpu= | paste -sd+ - | bc",
                     shell=True, executable='/bin/bash'
                 ).decode().strip()
-                global_cpu_samples.append(float(usage))  # English comment
+                global_cpu_samples.append(float(usage)) 
             except Exception:
                 pass
             time.sleep(interval)
@@ -180,7 +114,7 @@ def start_memory_sampling(memory_samples, interval=2):
 
 def start_main_memory_sampling(interval=2):
     stop_event = threading.Event()
-    user = getpass.getuser()  # English comment
+    user = getpass.getuser() 
     def loop():
         while not stop_event.is_set():
             try:
@@ -554,15 +488,6 @@ def calculate_cooling(A, v, Ep, gp, T, Q):
     )
 
 
-def convert_np(obj):
-    if isinstance(obj, np.ndarray):
-        return obj.tolist()
-    elif isinstance(obj, (np.float32, np.float64)):
-        return float(obj)
-    elif isinstance(obj, (np.int32, np.int64)):
-        return int(obj)
-    return obj
-
 def ProcessCoolingFunction(states_df, Ts, trans_df, Q_dict, temp_block=None):
     if trans_df.empty:
         return np.zeros(len(Ts))
@@ -632,8 +557,6 @@ def get_partial_path(trans_filepath):
     os.makedirs(partial_folder, exist_ok=True)
     return os.path.join(partial_folder, trans_filename + ".cf.partial")
 
-
-
 def save_partial_result(partial_path, Ts, cooling_func):
     np.savetxt(partial_path, np.column_stack((Ts, cooling_func)), fmt="%8.1f %20.8E")
 
@@ -692,9 +615,12 @@ class ChunkGenerator:
             )
             
             for chunk in chunk_iter:
-                # filter invalid rows
+                chunk["u"] = pd.to_numeric(chunk["u"], errors="coerce")
+                chunk["l"] = pd.to_numeric(chunk["l"], errors="coerce")
+                chunk["A"] = pd.to_numeric(chunk["A"], errors="coerce")
                 valid_mask = chunk["A"].notna() & (chunk["A"] >= 0)
                 chunk = chunk[valid_mask]
+                chunk = chunk.dropna(subset=["u", "l"])
                 
                 if not chunk.empty:
                     self.total_lines += len(chunk)
@@ -720,8 +646,12 @@ class ChunkGenerator:
             )
             
             for chunk in chunk_iter:
+                chunk["u"] = pd.to_numeric(chunk["u"], errors="coerce")
+                chunk["l"] = pd.to_numeric(chunk["l"], errors="coerce")
+                chunk["A"] = pd.to_numeric(chunk["A"], errors="coerce")
                 valid_mask = chunk["A"].notna() & (chunk["A"] >= 0)
                 chunk = chunk[valid_mask]
+                chunk = chunk.dropna(subset=["u", "l"])
                 
                 if not chunk.empty:
                     self.total_lines += len(chunk)
@@ -751,8 +681,12 @@ class ChunkGenerator:
             )
             
             for chunk in chunk_iter:
+                chunk["u"] = pd.to_numeric(chunk["u"], errors="coerce")
+                chunk["l"] = pd.to_numeric(chunk["l"], errors="coerce")
+                chunk["A"] = pd.to_numeric(chunk["A"], errors="coerce")
                 valid_mask = chunk["A"].notna() & (chunk["A"] >= 0)
                 chunk = chunk[valid_mask]
+                chunk = chunk.dropna(subset=["u", "l"])
                 
                 if not chunk.empty:
                     total_lines += len(chunk)
@@ -774,8 +708,12 @@ class ChunkGenerator:
             )
             
             for chunk in chunk_iter:
+                chunk["u"] = pd.to_numeric(chunk["u"], errors="coerce")
+                chunk["l"] = pd.to_numeric(chunk["l"], errors="coerce")
+                chunk["A"] = pd.to_numeric(chunk["A"], errors="coerce")
                 valid_mask = chunk["A"].notna() & (chunk["A"] >= 0)
                 chunk = chunk[valid_mask]
+                chunk = chunk.dropna(subset=["u", "l"])
                 
                 if not chunk.empty:
                     total_lines += len(chunk)
@@ -852,19 +790,9 @@ def calculate_cooling_func(states_df, Ts, trans_filepath, ncpufiles, ncputrans, 
     safe_workers = ncputrans
     safe_chunk_size = chunk_size
     
-    # show current memory status (informational only)
-    available_memory_gb = psutil.virtual_memory().available / 1024**3
-    used_percent = psutil.virtual_memory().percent
-    print(f" Memory status: {available_memory_gb:.1f}GB available, {used_percent:.1f}% used - Using Workers: {safe_workers}, Chunk: {safe_chunk_size}")
-    
     # update result with actual parameters used
     result["ncputrans_used"] = safe_workers
     result["chunksize_used"] = safe_chunk_size
-    
-    # memory check counters - reduce frequency
-    memory_check_counter = 0
-    last_memory_check = time.time()
-    memory_check_interval = 30  # 30
     
     # initialize progress bar
     proc_pbar = tqdm(total=num_chunks, desc="Processing chunks")
@@ -901,37 +829,11 @@ def calculate_cooling_func(states_df, Ts, trans_filepath, ncpufiles, ncputrans, 
                     completed_chunks += 1
                     proc_pbar.update(1)
                     
-                    # reduce memory check frequency: every 50 chunks or 30s
-                    memory_check_counter += 1
-                    current_time = time.time()
-                    
-                    if (memory_check_counter >= 50 or 
-                        current_time - last_memory_check >= memory_check_interval):
-                        
-                        # reset counter
-                        memory_check_counter = 0
-                        last_memory_check = current_time
-                        
-                        # quick memory check (reduce syscalls)
-                        try:
-                            current_memory = psutil.virtual_memory().available / 1024**3
-                            current_used = psutil.virtual_memory().percent
-                            
-                            # do not adjust parameters internally; keep outer settings
-                            # only warn under critical memory; do not adjust parameters
-                            if current_memory < 5 or current_used > 90:
-                                print(f" WARNING: Critical memory situation - {current_memory:.1f}GB available, {current_used:.1f}% used")
-                                print(f" WARNING: Continuing with current parameters: Workers={safe_workers}, Chunk={safe_chunk_size}")
-                                
-                        except Exception as e:
-                            print(f" Memory check failed: {e}")
-                        
                 except Exception as e:
                     print(f" Error in future result: {e}")
                     completed_chunks += 1
                     proc_pbar.update(1)
             
-            # submit new tasks
             while len(futures) < safe_workers and completed_chunks + len(futures) < num_chunks:
                 try:
                     chunk_data = next(chunk_iter)
@@ -998,83 +900,6 @@ def calculate_cooling_func(states_df, Ts, trans_filepath, ncpufiles, ncputrans, 
 
     return result
 
-
-# Adaptive parameter selection function
-def get_adaptive_parameters_by_file_size(file_size_gb, base_ncputrans, base_ncpufiles, base_chunk_size, total_files=None):
-    """
-    Adapt parameters based on file size and number of files
-    """
-    
-    # use default strategy if total_files is not provided
-    if total_files is None:
-        total_files = 50  # moderate number of files
-    
-    # adjust based on file count and size
-    if total_files < 50:  # few files
-        if file_size_gb < 2:  # small files
-            adaptive_ncputrans = min(base_ncputrans, 6)
-            adaptive_ncpufiles = min(base_ncpufiles, 4)
-            adaptive_chunk_size = max(base_chunk_size, 20000)
-            strategy = "small_file_balanced"
-            print(f" Small file strategy (few files): Workers={adaptive_ncputrans}, Files={adaptive_ncpufiles}, Chunk={adaptive_chunk_size}")
-            
-        elif file_size_gb < 10:  # medium files
-            adaptive_ncputrans = min(base_ncputrans, 8)
-            adaptive_ncpufiles = min(base_ncpufiles, 3)
-            adaptive_chunk_size = max(base_chunk_size, 15000)
-            strategy = "medium_file_balanced"
-            print(f" Medium file strategy (few files): Workers={adaptive_ncputrans}, Files={adaptive_ncpufiles}, Chunk={adaptive_chunk_size}")
-            
-        elif file_size_gb < 30:  # large files
-            adaptive_ncputrans = min(base_ncputrans, 8)
-            adaptive_ncpufiles = min(base_ncpufiles, 2)
-            adaptive_chunk_size = max(base_chunk_size, 10000)
-            strategy = "large_file_conservative"
-            print(f" Large file strategy (few files): Workers={adaptive_ncputrans}, Files={adaptive_ncpufiles}, Chunk={adaptive_chunk_size}")
-            
-        else:  # large files
-            adaptive_ncputrans = min(base_ncputrans, 6)
-            adaptive_ncpufiles = min(base_ncpufiles, 1)
-            adaptive_chunk_size = max(base_chunk_size, 10000)
-            strategy = "huge_file_minimal"
-            print(f" Huge file strategy (few files): Workers={adaptive_ncputrans}, Files={adaptive_ncpufiles}, Chunk={adaptive_chunk_size}")
-            
-    else:  # English comment
-        if file_size_gb < 2:  # small files
-            # small filesH2O
-            adaptive_ncputrans = min(base_ncputrans, 4)
-            adaptive_ncpufiles = min(base_ncpufiles, 8)
-            adaptive_chunk_size = max(base_chunk_size, 20000)
-            strategy = "small_file_many_files"
-            print(f" Small file strategy (many files): Workers={adaptive_ncputrans}, Files={adaptive_ncpufiles}, Chunk={adaptive_chunk_size}")
-            
-        elif file_size_gb < 10:  # medium files
-            adaptive_ncputrans = min(base_ncputrans, 6)
-            adaptive_ncpufiles = min(base_ncpufiles, 6)
-            adaptive_chunk_size = max(base_chunk_size, 15000)
-            strategy = "medium_file_many_files"
-            print(f" Medium file strategy (many files): Workers={adaptive_ncputrans}, Files={adaptive_ncpufiles}, Chunk={adaptive_chunk_size}")
-            
-        elif file_size_gb < 30:  # large files
-            adaptive_ncputrans = min(base_ncputrans, 4)
-            adaptive_ncpufiles = min(base_ncpufiles, 5)
-            adaptive_chunk_size = max(base_chunk_size, 10000)
-            strategy = "large_file_many_files"
-            print(f" Large file strategy (many files): Workers={adaptive_ncputrans}, Files={adaptive_ncpufiles}, Chunk={adaptive_chunk_size}")
-            
-        else:  # large files
-            adaptive_ncputrans = min(base_ncputrans, 2)
-            adaptive_ncpufiles = min(base_ncpufiles, 4)
-            adaptive_chunk_size = max(base_chunk_size, 50000)
-            strategy = "huge_file_many_files"
-            print(f" Huge file strategy (many files): Workers={adaptive_ncputrans}, Files={adaptive_ncpufiles}, Chunk={adaptive_chunk_size}")
-    
-    return {
-        'ncputrans': adaptive_ncputrans,
-        'ncpufiles': adaptive_ncpufiles,
-        'chunk_size': adaptive_chunk_size,
-        'strategy': strategy
-    }
 
 def classify_files_by_size(trans_filepaths):
     """
@@ -1170,7 +995,7 @@ def exomol_cooling(states_df, Ntemp, Tmax):
         mem_stop_event.set()
         mem_thread.join()
 
-        return runtime_record  # English comment
+        return runtime_record 
 
 
     # if runtime.json exists, load recorded times
@@ -1180,23 +1005,21 @@ def exomol_cooling(states_df, Ntemp, Tmax):
     else:
         existing_runtime = {}
     old_trans_times = OrderedDict(existing_runtime.get("trans_times", {}))
-    runtime_record["trans_times"] = OrderedDict({**old_trans_times})  # English comment
+    runtime_record["trans_times"] = OrderedDict({**old_trans_times}) 
 
     runtime_record["large_trans_files_ncpufiles_1"] = []
 
     trans_filepaths = get_transfiles(read_path)
     
-    # new: intelligent file classification and prioritized processing
-    print(" Analyzing file sizes and setting adaptive parameters...")
+    # process files by size priority (no adaptive parameters)
+    print(" Processing files...")
     priority_order = get_priority_processing_order(trans_filepaths)
     
-    # English comment
     total_files = len(trans_filepaths)
     total_size_gb = sum(os.path.getsize(fp) / 1024**3 for fp in trans_filepaths)
     print(f" Total: {total_files} files, {total_size_gb:.1f}GB")
     
-    def process_file_with_adaptive_parameters(trans_filepath, base_ncputrans, base_ncpufiles, base_chunk_size, total_files):
-        """Process a single file using adaptive parameters"""
+    def process_file(trans_filepath, base_ncputrans, base_ncpufiles, base_chunk_size, total_files):
         trans_filename = os.path.basename(trans_filepath).replace(".bz2", "")
         partial_path = get_partial_path(trans_filepath)
         
@@ -1206,55 +1029,26 @@ def exomol_cooling(states_df, Ntemp, Tmax):
                 runtime_record["trans_times"][trans_filename] = old_trans_times[trans_filename]
             return None
         
-        # English comment
-        file_size_gb = os.path.getsize(trans_filepath) / 1024**3
-        adaptive_params = get_adaptive_parameters_by_file_size(file_size_gb, base_ncputrans, base_ncpufiles, base_chunk_size, total_files)
-        
-        # English comment
-        safe_workers = memory_budget_manager.get_safe_worker_count(adaptive_params['ncputrans'])
-        safe_chunk_size = memory_budget_manager.get_optimal_chunk_size(file_size_gb, adaptive_params['chunk_size'])
-        
-        print(f" {trans_filename}: Adaptive strategy={adaptive_params['strategy']}")
+        # 固定参数（与 Dias 一致思路）
+        safe_workers = ncputrans
+        safe_chunk_size = chunk_size
+        print(f" {trans_filename}: Using default parameters")
         print(f" {trans_filename}: Workers={safe_workers}, ChunkSize={safe_chunk_size}")
-        
-        return (trans_filepath, safe_workers, safe_chunk_size, adaptive_params['strategy'])
+        return (trans_filepath, safe_workers, safe_chunk_size, "default")
 
     # ProcessPoolExecutor
     print(f" Creating single ProcessPoolExecutor with {ncpufiles} workers...")
     print(f" Main process PID: {os.getpid()}")
     print(f" Main process memory: {psutil.Process().memory_info().rss / 1024**2:.1f}MB")
     
-    # dynamically choose file-level parallelism by file type
+    # 文件级并行数固定为 ncpufiles
     def get_file_level_parallelism(file_type, file_list, total_files):
-        """Get suitable file-level parallelism by file type"""
-        if not file_list:
-            return ncpufiles
-        
-        # English comment
-        sample_file_size = file_list[0][1]
-        adaptive_params = get_adaptive_parameters_by_file_size(sample_file_size, ncputrans, ncpufiles, chunk_size, total_files)
-        strategy_ncpufiles = adaptive_params['ncpufiles']
-        
-        print(f" {file_type.upper()} files: Using {strategy_ncpufiles} file-level workers (strategy: {adaptive_params['strategy']})")
-        return strategy_ncpufiles
+        return ncpufiles
     
     # use ncpufiles as file-level parallelism
     print(f" Using {ncpufiles} workers for file-level parallelism")
     
-    # remove global memory check; rely on number of processes
-    def should_start_new_file():
-        """Determine if a new file task can start - lightweight check"""
-        # English comment
-        available_gb = psutil.virtual_memory().available / 1024**3
-        used_percent = psutil.virtual_memory().percent
-        
-        # English comment
-        if available_gb < 15:  # 15GB
-            return False, f"Low memory: {available_gb:.1f}GB available"
-        elif used_percent > 80:  # 80%
-            return False, f"High usage: {used_percent:.1f}%"
-        else:
-            return True, f"OK: {available_gb:.1f}GB available, {used_percent:.1f}% used"
+    
     
     # process per file type with different parallelism
     all_futures = []
@@ -1275,39 +1069,15 @@ def exomol_cooling(states_df, Ntemp, Tmax):
             file_futures = []
             
             for trans_filepath, file_size_gb in file_list:
-                # English comment
-                file_params = process_file_with_adaptive_parameters(trans_filepath, ncputrans, ncpufiles, chunk_size, total_files)
+                file_params = process_file(trans_filepath, ncputrans, ncpufiles, chunk_size, total_files)
                 
-                if file_params is None:  # English comment
+                if file_params is None: 
                     continue
                 
                 trans_filepath, safe_workers, safe_chunk_size, strategy = file_params
                 trans_filename = os.path.basename(trans_filepath).replace(".bz2", "")
-                
-                # adjust memory check thresholds per strategy
-                # small filesperform memory check
-                memory_check_threshold = 5.0  # default 5GB
-                if total_files > 100:  # many files
-                    memory_check_threshold = 1.0  # 1GB
-                elif total_files > 50:  # moderate number of files
-                    memory_check_threshold = 2.0  # 2GB
-                
-                # perform memory check
-                if file_size_gb > memory_check_threshold:
-                    can_start, status = should_start_new_file()
-                    if not can_start:
-                        print(f" Waiting for memory: {status}")
-                        # wait for memory to be freed
-                        while not can_start:
-                            time.sleep(30)  # 30
-                            can_start, status = should_start_new_file()
-                        print(f" Memory available: {status}")
-                elif total_files > 100:  # small files
-                    # English comment
-                    available_gb = psutil.virtual_memory().available / 1024**3
-                    if available_gb < 10:  # 10GB
-                        print(f" Low memory warning: {available_gb:.1f}GB available, continuing with caution")
-                
+
+                # no memory gating; submit directly with fixed parameters
                 print(f" Submitting {trans_filename} with strategy: {strategy}")
                 future = executor.submit(calculate_cooling_func, states_df, Ts, trans_filepath, ncpufiles, safe_workers, safe_chunk_size, Q_dict)
                 file_futures.append((future, trans_filename))
@@ -1344,7 +1114,7 @@ def exomol_cooling(states_df, Ntemp, Tmax):
     # === get current partial filenames (without path) ===
     existing_partials = set(os.path.basename(pf).replace(".cf.partial", "") for pf in partial_files)
     expected_partials = set(
-        os.path.basename(tp).replace(".bz2", "") for tp in trans_filepaths
+        os.path.basename(tp).replace(".bz2", "").replace(".trans", "") for tp in trans_filepaths
     )
 
     missing_partials = sorted(expected_partials - existing_partials)
@@ -1371,7 +1141,7 @@ def exomol_cooling(states_df, Ntemp, Tmax):
                 except Exception as e:
                     print(f" Error in retry task: {e}")
 
-    # check again whether all partial files exist
+    # check again whether all partial files exist (require exact count match)
     partial_files = glob.glob(os.path.join(partial_folder, "*.cf.partial"))
     if len(partial_files) == len(trans_filepaths):
         merge_all_partials(molecule, isotopologue, dataset, Ts, cf_path)
